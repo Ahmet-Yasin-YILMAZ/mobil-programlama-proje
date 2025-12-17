@@ -10,6 +10,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+import todosRouter from "./src/routes/todos.routes.js";
+app.use("/todos", todosRouter);
+
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;

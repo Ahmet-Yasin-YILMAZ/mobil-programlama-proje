@@ -1,11 +1,10 @@
-// backend/index.js
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 
-import { requireAuth } from "./src/auth/auth.stub.js";
+import { suggestTodoTitle } from "./src/ai/ai.stub.js";
+import todosRouter from "./src/routes/todos.routes.js";
 
 dotenv.config();
 
@@ -14,14 +13,24 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Public health check – herkes erişebilir
+// Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-// Authorization örneği: sadece giriş yapmış kullanıcı erişebilsin
-app.get("/me", requireAuth, (req, res) => {
+app.use("/todos", todosRouter);
+
+// AI servis endpoint'i
+app.post("/ai/suggest-todo-title", async (req, res) => {
+  const { title } = req.body || {};
+
+  if (!title || typeof title !== "string") {
+    return res.status(400).json({ error: "title is required" });
+  }
+
+  const suggestion = await suggestTodoTitle(title);
+
   return res.json({
-    message: "Bu endpoint'e sadece yetkili (authenticated) kullanıcı erişebilir.",
-    user: req.user,
+    input: title,
+    suggestion,
   });
 });
 

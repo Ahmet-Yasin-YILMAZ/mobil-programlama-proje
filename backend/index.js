@@ -10,6 +10,11 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// 🔽 YENİ EKLEDİĞİMİZ KISIM
+import todosRouter from "./src/routes/todos.routes.js";
+app.use("/todos", todosRouter);
+// 🔼 YENİ EKLEDİĞİMİZ KISIM
+
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PORT || 3000;

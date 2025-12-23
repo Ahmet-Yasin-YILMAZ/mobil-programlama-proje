@@ -1,11 +1,10 @@
-// backend/index.js (ai-service branch)
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 
 import { suggestTodoTitle } from "./src/ai/ai.stub.js";
+import todosRouter from "./src/routes/todos.routes.js";
 
 dotenv.config();
 
@@ -16,6 +15,8 @@ app.use(express.json());
 
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
+
+app.use("/todos", todosRouter);
 
 // AI servis endpoint'i
 app.post("/ai/suggest-todo-title", async (req, res) => {

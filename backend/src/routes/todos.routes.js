@@ -2,18 +2,18 @@ import { Router } from "express";
 
 const router = Router();
 
-// Geçici in-memory liste
+// In-memory (Data Layer branch'inde MongoDB'ye bağlanacak) [cite: 13]
 let todos = [{ id: "1", title: "Hello", status: "OPEN" }];
 
-// GET /todos -> hepsini listele
+// GET /todos -> Hepsini listele
 router.get("/", (req, res) => {
   res.json(todos);
 });
 
-// POST /todos -> yeni todo ekle
+// POST /todos -> Yeni todo ekle
 router.post("/", (req, res) => {
   const { title } = req.body || {};
-  if (!title || typeof title !== "string") {
+  if (!title || typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ error: "title is required" });
   }
 
@@ -27,35 +27,44 @@ router.post("/", (req, res) => {
   return res.status(201).json(newTodo);
 });
 
-// PATCH /todos/:id/status -> status güncelle
+// PATCH /todos/:id -> Sadece başlık güncelle
+router.patch("/:id", (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body || {};
+
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "title must be a non-empty string" });
+  }
+
+  const idx = todos.findIndex((t) => t.id === id);
+  if (idx === -1) return res.status(404).json({ error: "todo not found" });
+
+  todos[idx] = { ...todos[idx], title: title.trim() };
+  return res.json(todos[idx]);
+});
+
+// PATCH /todos/:id/status -> Durum güncelle (OPEN/DONE)
 router.patch("/:id/status", (req, res) => {
   const { id } = req.params;
   const { status } = req.body || {};
 
-  if (!["OPEN", "DONE"].includes(status)) {
-    return res.status(400).json({ error: "invalid status" });
+  if (status !== "OPEN" && status !== "DONE") {
+    return res.status(400).json({ error: "status must be OPEN or DONE" });
   }
 
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) {
-    return res.status(404).json({ error: "todo not found" });
-  }
+  const idx = todos.findIndex((t) => t.id === id);
+  if (idx === -1) return res.status(404).json({ error: "todo not found" });
 
-  todo.status = status;
-  return res.json(todo);
+  todos[idx] = { ...todos[idx], status };
+  return res.json(todos[idx]);
 });
 
-// DELETE /todos/:id -> sil
+// DELETE /todos/:id -> Sil
 router.delete("/:id", (req, res) => {
   const { id } = req.params;
   const before = todos.length;
-
   todos = todos.filter((t) => t.id !== id);
-
-  if (todos.length === before) {
-    return res.status(404).json({ error: "todo not found" });
-  }
-
+  if (todos.length === before) return res.status(404).json({ error: "todo not found" });
   return res.status(204).send();
 });
 

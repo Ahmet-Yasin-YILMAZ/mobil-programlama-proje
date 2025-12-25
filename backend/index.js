@@ -9,12 +9,12 @@ dotenv.config();
 
 const app = express();
 
-// Proje kuralı: Web Security Implementation (Helmet & CORS) 
+// Proje kuralı: Web Security Implementation (Helmet & CORS) [cite: 19]
 app.use(helmet()); 
 app.use(cors());
 app.use(express.json());
 
-// Sağlık kontrolü ve sahiplik doğrulaması (Ahmet Yasin YILMAZ)
+// Sağlık kontrolü ve sahiplik doğrulaması (Ahmet Yasin YILMAZ) 
 app.get("/health", (req, res) => {
   res.json({ 
     status: "active", 
@@ -26,7 +26,7 @@ app.get("/health", (req, res) => {
 // Proje kuralı: Web Service Implementation (Express API) [cite: 14]
 app.use("/todos", todosRouter);
 
-// Cloud Service (AI) Endpoint'i (Kürşat'ın geliştirmesiyle entegrasyon) [cite: 20]
+// Cloud Service (AI) Endpoint'i (Entegrasyon tamamlandı) [cite: 20]
 app.post("/ai/suggest-todo-title", async (req, res) => {
   const { title } = req.body || {};
 

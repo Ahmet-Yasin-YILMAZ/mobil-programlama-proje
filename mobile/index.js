@@ -1,8 +1,8 @@
-import { registerRootComponent } from 'expo';
+import rateLimit from 'express-rate-limit';
 
-import App from './App';
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 100 // IP başına 100 istek sınırı
+});
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+app.use(limiter); // Web Security Implementation: Rate Limiting

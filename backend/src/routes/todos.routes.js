@@ -2,13 +2,15 @@ import { Router } from "express";
 
 const router = Router();
 
-// In-memory (şimdilik)
+// In-memory (Data Layer branch'inde MongoDB'ye bağlanacak) [cite: 13]
 let todos = [{ id: "1", title: "Hello", status: "OPEN" }];
 
+// GET /todos -> Hepsini listele
 router.get("/", (req, res) => {
   res.json(todos);
 });
 
+// POST /todos -> Yeni todo ekle
 router.post("/", (req, res) => {
   const { title } = req.body || {};
   if (!title || typeof title !== "string" || !title.trim()) {
@@ -25,6 +27,7 @@ router.post("/", (req, res) => {
   return res.status(201).json(newTodo);
 });
 
+// PATCH /todos/:id -> Sadece başlık güncelle
 router.patch("/:id", (req, res) => {
   const { id } = req.params;
   const { title } = req.body || {};
@@ -40,6 +43,7 @@ router.patch("/:id", (req, res) => {
   return res.json(todos[idx]);
 });
 
+// PATCH /todos/:id/status -> Durum güncelle (OPEN/DONE)
 router.patch("/:id/status", (req, res) => {
   const { id } = req.params;
   const { status } = req.body || {};
@@ -55,6 +59,7 @@ router.patch("/:id/status", (req, res) => {
   return res.json(todos[idx]);
 });
 
+// DELETE /todos/:id -> Sil
 router.delete("/:id", (req, res) => {
   const { id } = req.params;
   const before = todos.length;

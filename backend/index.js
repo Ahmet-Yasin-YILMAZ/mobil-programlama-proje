@@ -7,12 +7,12 @@ dotenv.config();
 
 const app = express();
 
-// Güvenlik Katmanları (Helmet & CORS)
+// Güvenlik Katmanları (Kürşat - Web Security)
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Sağlık kontrolü - Kürşat Emircan BALTA
+// Sağlık kontrolü ve Sahiplik Doğrulaması
 app.get("/health", (req, res) => {
   return res.json({ 
     ok: true, 

@@ -1,71 +1,43 @@
 import { Router } from "express";
+import { TodoManager } from "../business/TodoManager.js";
+import OpenAI from "openai";
 
 const router = Router();
+const todoManager = new TodoManager();
+const openai = new OpenAI({ apiKey: "YOUR_OPENAI_API_KEY" }); // Buraya kendi key'inizi yazın
+let todos = []; 
 
-// In-memory (Data Layer branch'inde MongoDB'ye bağlanacak) [cite: 13]
-let todos = [{ id: "1", title: "Hello", status: "OPEN" }];
-
-// GET /todos -> Hepsini listele
-router.get("/", (req, res) => {
-  res.json(todos);
+// CLOUD AI SERVİSİ (Kürşat'ın Katmanı)
+router.post("/ai-suggest", async (req, res) => {
+  const { title } = req.body;
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: "Todo maddesini 3 kelimelik kısa başlığa çevir." }, { role: "user", content: title }],
+      model: "gpt-3.5-turbo",
+    });
+    const result = completion.choices[0].message.content;
+    res.json({ suggestion: result || title }); // Boş gelirse orijinali döndür (Sıfırlamayı önler)
+  } catch (err) {
+    res.json({ suggestion: title }); // Hata olursa mevcut yazıyı koru
+  }
 });
 
-// POST /todos -> Yeni todo ekle
+// WEB SERVICE (Ahmet Yasin'in Katmanı)
+router.get("/", (req, res) => res.json(todoManager.sortByDate(todos)));
+
 router.post("/", (req, res) => {
-  const { title } = req.body || {};
-  if (!title || typeof title !== "string" || !title.trim()) {
-    return res.status(400).json({ error: "title is required" });
-  }
-
-  const newTodo = {
-    id: String(Date.now()),
-    title: title.trim(),
-    status: "OPEN",
-  };
-
-  todos.push(newTodo);
-  return res.status(201).json(newTodo);
+  try {
+    const { title, dueDate } = req.body;
+    const newTask = todoManager.createTask(title, dueDate);
+    const entry = { id: String(Date.now()), ...newTask };
+    todos.push(entry);
+    res.status(201).json(entry);
+  } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// PATCH /todos/:id -> Sadece başlık güncelle
-router.patch("/:id", (req, res) => {
-  const { id } = req.params;
-  const { title } = req.body || {};
-
-  if (typeof title !== "string" || !title.trim()) {
-    return res.status(400).json({ error: "title must be a non-empty string" });
-  }
-
-  const idx = todos.findIndex((t) => t.id === id);
-  if (idx === -1) return res.status(404).json({ error: "todo not found" });
-
-  todos[idx] = { ...todos[idx], title: title.trim() };
-  return res.json(todos[idx]);
-});
-
-// PATCH /todos/:id/status -> Durum güncelle (OPEN/DONE)
-router.patch("/:id/status", (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body || {};
-
-  if (status !== "OPEN" && status !== "DONE") {
-    return res.status(400).json({ error: "status must be OPEN or DONE" });
-  }
-
-  const idx = todos.findIndex((t) => t.id === id);
-  if (idx === -1) return res.status(404).json({ error: "todo not found" });
-
-  todos[idx] = { ...todos[idx], status };
-  return res.json(todos[idx]);
-});
-
-// DELETE /todos/:id -> Sil
 router.delete("/:id", (req, res) => {
-  const { id } = req.params;
-  const before = todos.length;
-  todos = todos.filter((t) => t.id !== id);
-  if (todos.length === before) return res.status(404).json({ error: "todo not found" });
-  return res.status(204).send();
+  todos = todos.filter(t => t.id !== req.params.id);
+  res.status(204).send();
 });
 
 export default router;

@@ -1,40 +1,31 @@
-/**
- * Business Layer: OOP Components [cite: 12]
- * Bu sınıf, görevlerin iş mantığını ve doğrulama kurallarını yönetir.
- */
+import { z } from 'zod';
+
 class Task {
-  constructor(title, priority = 'NORMAL') {
+  constructor(title, dueDate, priority = 'NORMAL') {
     this.title = title;
+    this.dueDate = dueDate || new Date().toISOString().split('T')[0];
     this.priority = priority;
+    this.status = 'OPEN';
     this.createdAt = new Date();
   }
 }
 
 export class TodoManager {
   constructor() {
-    this.minTitleLength = 3;
+    this.schema = z.object({
+      title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
+      dueDate: z.string().refine((val) => !isNaN(new Date(val).getTime()), {
+        message: "Geçersiz tarih!" // Ayın 35'i gibi hataları engeller
+      })
+    });
   }
 
-  // Abstraction & Encapsulation örneği
-  validateTask(title) {
-    if (!title || title.trim().length < this.minTitleLength) {
-      throw new Error(`Görev başlığı en az ${this.minTitleLength} karakter olmalıdır.`);
-    }
-    return true;
+  createTask(title, dueDate, priority) {
+    const validated = this.schema.parse({ title, dueDate });
+    return new Task(validated.title, validated.dueDate, priority);
   }
 
-  createTaskObject(title, priority) {
-    this.validateTask(title);
-    return new Task(title.trim(), priority);
-  }
-
-  // İş mantığı: Görevlerin önem sırasına göre işlenmesi
-  processTask(task) {
-    console.log(`[Business Layer] İşleniyor: ${task.title} (Öncelik: ${task.priority})`);
-    return {
-      ...task,
-      processedAt: new Date(),
-      status: 'VALIDATED'
-    };
+  sortByDate(todos) {
+    return [...todos].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
   }
 }

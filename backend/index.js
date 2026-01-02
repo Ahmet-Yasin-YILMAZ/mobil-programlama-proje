@@ -1,48 +1,72 @@
 import express from "express";
+import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
-import todosRouter from "./src/routes/todos.routes.js";
-import { suggestTodoTitle } from "./src/ai/ai.stub.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { generateRealRoadmap } from "./src/ai/aiService.js";
 
 dotenv.config();
-
 const app = express();
 
-// Proje kuralı: Web Security Implementation (Helmet & CORS) [cite: 19]
 app.use(helmet()); 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ charset: 'utf-8' }));
 
-// Sağlık kontrolü ve sahiplik doğrulaması (Ahmet Yasin YILMAZ) 
-app.get("/health", (req, res) => {
-  res.json({ 
-    status: "active", 
-    owner: "Ahmet Yasin YILMAZ",
-    layer: "Web Service"
-  });
-});
+mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/smart_todo")
+  .then(() => console.log("✅ MongoDB Bağlantısı Başarılı"))
+  .catch(err => console.error("❌ DB Bağlantı Hatası:", err.message));
 
-// Proje kuralı: Web Service Implementation (Express API) [cite: 14]
-app.use("/todos", todosRouter);
+const User = mongoose.model("User", new mongoose.Schema({
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  tasks: Array // Görevler burada dizi olarak saklanır
+}));
 
-// Cloud Service (AI) Endpoint'i (Entegrasyon tamamlandı) [cite: 20]
-app.post("/ai/suggest-todo-title", async (req, res) => {
-  const { title } = req.body || {};
-
-  if (!title || typeof title !== "string") {
-    return res.status(400).json({ error: "title is required" });
+// --- GİRİŞ: GÖREVLERİ GERİ GETİRİR ---
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (user && await bcrypt.compare(password, user.password)) {
+      const token = jwt.sign({ userId: user._id }, "SECRET_KEY");
+      // KRİTİK: Giriş yapınca kullanıcının ID'sini ve görevlerini de gönderiyoruz
+      return res.json({ token, userId: user._id, tasks: user.tasks || [] });
+    }
+    res.status(401).json({ error: "E-posta veya şifre hatalı." });
+  } catch (e) {
+    res.status(500).json({ error: "Giriş hatası." });
   }
-
-  const suggestion = await suggestTodoTitle(title);
-
-  return res.json({
-    input: title,
-    suggestion,
-  });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 API running on http://localhost:${PORT} - Web Service & AI Integrated`);
+// --- SENKRONİZASYON: GÖREVLERİ VERİTABANINA KAYDEDER ---
+app.post("/api/tasks/sync", async (req, res) => {
+  const { userId, tasks } = req.body;
+  try {
+    await User.findByIdAndUpdate(userId, { tasks });
+    res.json({ message: "Görevler senkronize edildi." });
+  } catch (e) {
+    res.status(500).json({ error: "Veriler kaydedilemedi." });
+  }
 });
+
+app.post("/api/auth/register", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await new User({ email, password: hashedPassword, tasks: [] }).save();
+    res.json({ message: "Kayıt Başarılı" });
+  } catch (e) { res.status(400).json({ error: "E-posta kullanımda." }); }
+});
+
+app.post("/api/roadmap", async (req, res) => {
+  const { title } = req.body;
+  try {
+    const roadmap = await generateRealRoadmap(title);
+    res.json({ roadmap });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+const PORT = 3000;
+app.listen(PORT, () => console.log(`🚀 Sunucu http://localhost:${PORT} üzerinde hazır`));
